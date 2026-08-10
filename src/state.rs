@@ -3,39 +3,44 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
+use uuid::Uuid;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct User {
+    pub id: Uuid,
+    pub email: String,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Holding {
+    pub id: Uuid,
     pub symbol: String,
-    pub amount: f64,
+    pub amount: Decimal,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Portfolio {
-    pub id: String,
+    pub id: Uuid,
     pub name: String,
+    pub user: User,
     pub holdings: Vec<Holding>,
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct AppState {
-    // In-memory store: Portfolio ID -> Portfolio
-    pub portfolios: Arc<Mutex<HashMap<String, Portfolio>>>,
-    // In-memory store: Symbol (e.g. "BTC") -> Price in USD
+    pub db: PgPool,
+    // In-memory cache for ultra-fast, zero-DB-cost price lookups
     pub prices: Arc<Mutex<HashMap<String, f64>>>,
 }
 
 impl AppState {
-    pub fn new() -> Self {
-        let mut initial_prices = HashMap::new();
-        initial_prices.insert("BTC".to_string(), 65000.00);
-        initial_prices.insert("ETH".to_string(), 3400.00);
-        initial_prices.insert("SOL".to_string(), 145.50);
-
+    pub fn new(db: PgPool) -> Self {
         Self {
-            portfolios: Arc::new(Mutex::new(HashMap::new())),
-            prices: Arc::new(Mutex::new(initial_prices)),
+            db,
+            prices: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 }

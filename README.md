@@ -52,7 +52,7 @@ Designed with clean architecture, robust error handling, and production-ready as
 - **[x] Phase 1: Foundation**
   - Basic Axum setup with in-memory state (`Arc<Mutex<HashMap>>`).
   - Health check and mock portfolio endpoints.
-- **[ ] Phase 2: Persistence & Migrations**
+- **[x] Phase 2: Persistence & Migrations**
   - PostgreSQL integration using `SQLx`.
   - Database schema migrations for `users`, `portfolios`, `holdings`, and `price_alerts`.
 - **[ ] Phase 3: Resilient Error Handling & Logging**

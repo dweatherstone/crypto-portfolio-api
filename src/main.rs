@@ -1,13 +1,15 @@
-use std::net::SocketAddr;
+use std::{env, net::SocketAddr, time::Duration};
 
 use axum::{
     Router,
     routing::{get, post},
 };
+use sqlx::postgres::PgPoolOptions;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::state::AppState;
 
+pub mod db;
 pub mod handlers;
 pub mod models;
 pub mod state;
@@ -19,7 +21,26 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let state = AppState::new();
+    dotenvy::dotenv().ok();
+
+    let database_url =
+        env::var("DATABASE_URL").expect("DATABASE_URL environment variable must be set in .env");
+
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .acquire_timeout(Duration::from_secs(3))
+        .idle_timeout(Duration::from_secs(10))
+        .connect(&database_url)
+        .await
+        .expect("Failed to connect to Postgres pool");
+
+    // Run pending migrations automatically on startup
+    sqlx::migrate!("./migrations")
+        .run(&pool)
+        .await
+        .expect("Failed to run database migrations");
+
+    let state = AppState::new(pool);
 
     // Define routes and attach shared state
     let app = Router::new()
@@ -30,8 +51,12 @@ async fn main() {
             get(handlers::portfolio::list_portfolios).post(handlers::portfolio::create_portfolio),
         )
         .route(
+            "/api/portfolios/{id}",
+            get(handlers::portfolio::get_details),
+        )
+        .route(
             "/api/portfolios/{id}/holdings",
-            post(handlers::portfolio::add_holding),
+            post(handlers::portfolio::add_holdings),
         )
         .with_state(state);
 
